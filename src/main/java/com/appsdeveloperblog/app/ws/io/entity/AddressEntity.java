@@ -4,6 +4,9 @@ import lombok.Getter;
 import lombok.Setter;
 
 import javax.persistence.*;
+
+import com.appsdeveloperblog.app.ws.shared.dto.UserDto;
+
 import java.io.Serializable;
 @Entity
 @Table(name = "addresses")
@@ -12,7 +15,8 @@ import java.io.Serializable;
 public class AddressEntity implements Serializable {
 
 
-    @Id
+
+	@Id
     @GeneratedValue
     private long id;
 
@@ -33,4 +37,11 @@ public class AddressEntity implements Serializable {
 
     @Column(length=10, nullable=false)
     private String type;
+    
+
+	@ManyToOne
+	@JoinColumn(name="users_id")
+	private UserEntity userDetails;
+    
+    
 }

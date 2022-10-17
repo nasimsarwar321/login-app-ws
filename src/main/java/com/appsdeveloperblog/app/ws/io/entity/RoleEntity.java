@@ -10,7 +10,11 @@ import java.io.Serializable;
 @Getter
 @Setter
 public class RoleEntity implements Serializable {
-    @Id
+    /**
+	 * 
+	 */
+	private static final long serialVersionUID = 3626115357009129227L;
+	@Id
     @GeneratedValue(strategy= GenerationType.AUTO)
     private long id;
 }

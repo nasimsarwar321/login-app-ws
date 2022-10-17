@@ -13,7 +13,7 @@ public class UserDetailsRequestModel {
 	private String lastName;
 	private String email;
 	private String password;
-	//private List<AddressRequestModel> addresses;
+	private List<AddressRequestModel> addresses;
 	
 	
 

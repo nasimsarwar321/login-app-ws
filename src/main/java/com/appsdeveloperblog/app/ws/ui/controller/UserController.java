@@ -1,17 +1,15 @@
 package com.appsdeveloperblog.app.ws.ui.controller;
 
 import java.lang.reflect.Type;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashSet;
-import java.util.List;
+import java.util.*;
 
-import com.appsdeveloperblog.app.ws.ui.model.response.ErrorMessage;
-import com.appsdeveloperblog.app.ws.ui.model.response.ErrorMessages;
-import com.appsdeveloperblog.app.ws.ui.model.response.OperationStatusModel;
-import com.appsdeveloperblog.app.ws.ui.model.response.RequestOperationStatus;
+import com.appsdeveloperblog.app.ws.service.EmailService;
+import com.appsdeveloperblog.app.ws.ui.model.request.MailRequest;
+import com.appsdeveloperblog.app.ws.ui.model.request.PasswordResetRequestModel;
+import com.appsdeveloperblog.app.ws.ui.model.response.*;
 import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.io.Resource;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -24,10 +22,11 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.appsdeveloperblog.app.ws.exception.UserServiceException;
+import com.appsdeveloperblog.app.ws.service.AddressService;
 import com.appsdeveloperblog.app.ws.service.UserService;
+import com.appsdeveloperblog.app.ws.shared.dto.AddressDTO;
 import com.appsdeveloperblog.app.ws.shared.dto.UserDto;
 import com.appsdeveloperblog.app.ws.ui.model.request.UserDetailsRequestModel;
-import com.appsdeveloperblog.app.ws.ui.model.response.UserRest;
 import com.google.common.reflect.TypeToken;
 
 //Author  Nasim_Sarwar
@@ -38,13 +37,17 @@ public class UserController {
 	
 	@Autowired
 	UserService userService;
-	
+	@Autowired
+	AddressService addressService;
+
+	@Autowired
+	private EmailService service;
 	@GetMapping(path = "/{id}", produces = { MediaType.APPLICATION_XML_VALUE, MediaType.APPLICATION_JSON_VALUE })
 	public UserRest getUser(@PathVariable String id) {
-		UserRest returnValue = new UserRest();
+
          ModelMapper mapper = new ModelMapper();
 		UserDto userDto = userService.getUserByUserId(id);
-		returnValue =  mapper.map(userDto, UserRest.class);
+		UserRest returnValue  =  mapper.map(userDto, UserRest.class);
 		return returnValue;
 	}
 
@@ -113,4 +116,121 @@ public class UserController {
 
 		return returnValue;
 	}
+	
+	// http://localhost:8080/mobile-app-ws/users/jfhdjeufhdhdj/addressses
+		//@ApiImplicitParams({
+		//	@ApiImplicitParam(name="authorization", value="${userController.authorizationHeader.description}", paramType="header")
+		//})
+		@GetMapping(path = "/{id}/addresses", produces = { MediaType.APPLICATION_XML_VALUE,
+				MediaType.APPLICATION_JSON_VALUE, "application/hal+json" })
+		public List<AddressesRest> getUserAddresses(@PathVariable String id) {
+			List<AddressesRest> addressesListRestModel = new ArrayList<>();
+
+			List<AddressDTO> addressesDTO = addressService.getAddresses(id);
+
+			if (addressesDTO != null && !addressesDTO.isEmpty()) {
+				Type listType = new TypeToken<List<AddressesRest>>() {
+				}.getType();
+				addressesListRestModel = new ModelMapper().map(addressesDTO, listType);
+
+				/*
+				 * for (AddressesRest addressRest : addressesListRestModel) { Link addressLink =
+				 * linkTo(methodOn(UserController.class).getUserAddress(id,
+				 * addressRest.getAddressId())) .withSelfRel(); addressRest.add(addressLink);
+				 * 
+				 * Link userLink =
+				 * linkTo(methodOn(UserController.class).getUser(id)).withRel("user");
+				 * addressRest.add(userLink); }
+				 */
+			}
+
+			return addressesListRestModel;
+		}
+
+		/*
+		 * // @ApiImplicitParams({ // @ApiImplicitParam(name="authorization",
+		 * value="${userController.authorizationHeader.description}",
+		 * paramType="header") // })
+		 * 
+		 * @GetMapping(path = "/{userId}/addresses/{addressId}", produces = {
+		 * MediaType.APPLICATION_JSON_VALUE, MediaType.APPLICATION_XML_VALUE,
+		 * "application/hal+json" }) public Resource<AddressesRest>
+		 * getUserAddress(@PathVariable String userId, @PathVariable String addressId) {
+		 * 
+		 * AddressDTO addressesDto = addressService.getAddress(addressId);
+		 * 
+		 * ModelMapper modelMapper = new ModelMapper(); Link addressLink =
+		 * linkTo(methodOn(UserController.class).getUserAddress(userId,
+		 * addressId)).withSelfRel(); Link userLink =
+		 * linkTo(UserController.class).slash(userId).withRel("user"); Link
+		 * addressesLink =
+		 * linkTo(methodOn(UserController.class).getUserAddresses(userId)).withRel(
+		 * "addresses");
+		 * 
+		 * AddressesRest addressesRestModel = modelMapper.map(addressesDto,
+		 * AddressesRest.class);
+		 * 
+		 * addressesRestModel.add(addressLink); addressesRestModel.add(userLink);
+		 * addressesRestModel.add(addressesLink);
+		 * 
+		 * return new Resource<>(addressesRestModel); }
+		 */
+
+	/*
+	 * http://localhost:8080/mobile-app-ws/users/email-verification?token=sdfsdf
+	 * */
+	@GetMapping(path = "/email-verification", produces = { MediaType.APPLICATION_JSON_VALUE,
+			MediaType.APPLICATION_XML_VALUE })
+	public OperationStatusModel verifyEmailToken(@RequestParam(value = "token") String token) {
+
+		OperationStatusModel returnValue = new OperationStatusModel();
+		returnValue.setOperationName(RequestOperationName.VERIFY_EMAIL.name());
+
+		boolean isVerified = userService.verifyEmailToken(token);
+
+		if(isVerified)
+		{
+			returnValue.setOperationResult(RequestOperationStatus.SUCCESS.name());
+		} else {
+			returnValue.setOperationResult(RequestOperationStatus.ERROR.name());
+		}
+
+		return returnValue;
+	}
+
+	/*
+	 * http://localhost:8080/mobile-app-ws/users/password-reset-request
+	 * */
+	@PostMapping(path = "/password-reset-request",
+			produces = {MediaType.APPLICATION_JSON_VALUE, MediaType.APPLICATION_XML_VALUE},
+			consumes = {MediaType.APPLICATION_JSON_VALUE, MediaType.APPLICATION_XML_VALUE}
+	)
+	public OperationStatusModel requestReset(@RequestBody PasswordResetRequestModel passwordResetRequestModel) {
+		OperationStatusModel returnValue = new OperationStatusModel();
+
+		boolean operationResult = userService.requestPasswordReset(passwordResetRequestModel.getEmail());
+
+		returnValue.setOperationName(RequestOperationName.REQUEST_PASSWORD_RESET.name());
+		returnValue.setOperationResult(RequestOperationStatus.ERROR.name());
+
+		if(operationResult)
+		{
+			returnValue.setOperationResult(RequestOperationStatus.SUCCESS.name());
+		}
+
+		return returnValue;
+	}
+
+
+
+/*
+	@PostMapping(path ="/sendingEmail")
+	public MailResponse sendEmail(@RequestBody MailRequest request) {
+		Map<String, Object> model = new HashMap<>();
+		model.put("Name", request.getName());
+		model.put("location", "Bangalore,India");
+		return service.sendEmail(request, model);
+
+	}*/
+
 }
